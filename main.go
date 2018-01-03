@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	bolt "github.com/coreos/bbolt"
 	"github.com/n3wscott/k8s-broker-proxy/pkg/server"
 )
 
@@ -20,6 +21,9 @@ type Config struct {
 		ReadTimeout  time.Duration
 		WriteTimeout time.Duration
 		IdleTimeout  time.Duration
+	}
+	Bolt struct {
+		File string
 	}
 	Auth struct {
 		IntrospectURL string
@@ -53,7 +57,13 @@ func main() {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	s := server.CreateServer()
+	db, err := bolt.Open(config.Bolt.File, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	s := server.CreateServer(db)
 
 	srv := &http.Server{
 		ReadHeaderTimeout: config.Server.ReadTimeout,

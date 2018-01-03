@@ -3,3 +3,5 @@ server:
   readtimeout: 5s
   writetimeout: 5s
   addr: ":${PORT}"
+bolt:
+  file: ${BOLT_PATH}/broker-proxy-bolt.db

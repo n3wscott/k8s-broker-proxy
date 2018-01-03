@@ -3,9 +3,11 @@
 TAG?=$(shell git rev-list HEAD --max-count=1 --abbrev-commit)
 
 export TAG
-export PORT=8080
+export PORT=3000
 export GCP_PROJECT=plori-nicholss
 export GCP_PATH=us.gcr.io/${GCP_PROJECT}
+#export BOLT_PATH=/etc/proxy
+export BOLT_PATH=.
 
 install:
 	go get .
