@@ -9,6 +9,7 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"github.com/gorilla/handlers"
 	"github.com/n3wscott/k8s-broker-proxy/pkg/server"
 )
 
@@ -65,13 +66,25 @@ func main() {
 
 	s := server.CreateServer(db)
 
+	headersOk := handlers.AllowedHeaders([]string{
+		"Origin",
+		"X-Requested-With",
+		"X-Broker-API-Version",
+		"X-Broker-API-Originating-Identity",
+		"Content-Type",
+		"Authorization",
+		"Accept",
+	})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "DELETE", "POST", "PUT", "OPTIONS"})
+
 	srv := &http.Server{
 		ReadHeaderTimeout: config.Server.ReadTimeout,
 		IdleTimeout:       config.Server.IdleTimeout,
 		ReadTimeout:       config.Server.ReadTimeout,
 		WriteTimeout:      config.Server.WriteTimeout,
 		Addr:              config.Server.Addr,
-		Handler:           s.Router,
+		Handler:           handlers.CORS(originsOk, headersOk, methodsOk)(s.Router),
 	}
 
 	if err := srv.ListenAndServe(); err != nil {

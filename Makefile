@@ -18,15 +18,17 @@ test:
 build: install
 	go build -ldflags "-X main.version=$(TAG)" -o proxy .
 
-serve: build
+serve: build cfg
 	./proxy
 
 clean:
 	rm ./proxy
 	rm ./config.yml
 
-pack: build
+cfg:
 	envsubst < ./config.yml.dist > ./config.yml
+
+pack: build cfg
 	GOOS=linux make build
 	docker build -t ${GCP_PATH}/k8s-broker-proxy:$(TAG) .
 
