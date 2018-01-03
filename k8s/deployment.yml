@@ -1,0 +1,39 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: k8s-broker-proxy-service
+  labels:
+    app: k8s-broker-proxy-service
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: k8s-broker-proxy-service
+    spec:
+      containers:
+      - name: k8s-broker-proxy-service
+        image: ${GCP_PATH}/k8s-broker-proxy:${TAG}
+        command:
+        ports:
+          - containerPort: 8080
+        volumeMounts:
+          - name: k8s-broker-proxy-config
+            mountPath: /etc/proxy/
+            readOnly: true
+      volumes:
+        - name: k8s-broker-proxy-config
+          configMap: { name: k8s-broker-proxy-config }
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: k8s-broker-proxy-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: k8s-broker-proxy-service
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080

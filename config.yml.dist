@@ -1,0 +1,5 @@
+server:
+  idletimeout: 5s
+  readtimeout: 5s
+  writetimeout: 5s
+  addr: ":${PORT}"
