@@ -50,21 +50,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/n3wscott/gated-broker"
-  packages = [
-    "pkg/broker",
-    "pkg/registry"
-  ]
-  revision = "2461fc18cc22a44f387b09964d362daac86298d7"
-
-[[projects]]
-  name = "github.com/pborman/uuid"
-  packages = ["."]
-  revision = "e790cca94e6cc75c7064b1332e63811d4aae1a53"
-  version = "v1.1"
-
-[[projects]]
   name = "github.com/pmorie/go-open-service-broker-client"
   packages = ["v2"]
   revision = "87e2f174c3a1d416379eaa0cfe29f6fa0668e780"
@@ -119,12 +104,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/tmc/dot"
-  packages = ["."]
-  revision = "8c03d6afdb435c5f35748288e2b9c1dbb484ae56"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "13d03a9a82fba647c21a0ef8fba44a795d0f0835"
@@ -138,6 +117,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1aa2b9fdadc462858ca0d0bdbe734cc617e70b56ddf9791c6cab37f05fce6484"
+  inputs-digest = "bf95bd2390df0b7850bb7c6d5bd5bf772b66f4dd001bb6050ad55f959f51208c"
   solver-name = "gps-cdcl"
   solver-version = 1
