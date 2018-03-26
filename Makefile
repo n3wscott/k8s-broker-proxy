@@ -15,7 +15,7 @@ install: ## Go get deps
 test: ## Run unit tests
 	@go test -cover ./pkg/...
 
-build: install ## Build the proxy output
+build: ## Build the proxy output
 	@go build -ldflags "-X main.version=$(TAG)" -o proxy .
 
 fmtcheck: ## Check go formatting

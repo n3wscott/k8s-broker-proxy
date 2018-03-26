@@ -2,17 +2,13 @@ package broker
 
 import (
 	"sync"
-
-	"github.com/pmorie/osb-broker-lib/pkg/broker"
-
 	"net/http"
-
 	"fmt"
-
 	"reflect"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/pmorie/osb-broker-lib/pkg/broker"
 
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
