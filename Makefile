@@ -16,20 +16,20 @@ test: ## Run unit tests
 	@go test -cover ./pkg/...
 
 build: ## Build the proxy output
-	@go build -ldflags "-X main.version=$(TAG)" -o proxy .
+	@go build -ldflags "-X main.version=$(TAG)" -o out/proxy ./cmd/main.go
 
 fmtcheck: ## Check go formatting
 	@gofmt -l $(SOURCES) | grep ".*\.go"; if [ "$$?" = "0" ]; then exit 1; fi
 
 serve: build cfg ## Run the proxy locally
-	./proxy
+	./out/proxy --v 1 -logtostderr
 
 clean: ## Clean
-	rm ./proxy
-	rm ./config.yml
+	rm ./out/proxy
+	rm ./out/config.yml
 
 cfg: ## Write the config into envsubst
-	envsubst < ./config.yml.dist > ./config.yml
+	envsubst < ./config.yml.dist > ./out/config.yml
 
 check: fmtcheck vet lint test ## Pre-flight checks before creating PR
 

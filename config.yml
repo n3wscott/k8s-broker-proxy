@@ -1,0 +1,7 @@
+server:
+  idletimeout: 5s
+  readtimeout: 5s
+  writetimeout: 5s
+  addr: ":3000"
+bolt:
+  file: /broker-proxy-bolt.db
