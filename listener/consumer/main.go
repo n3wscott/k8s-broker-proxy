@@ -18,7 +18,6 @@ import (
 
 var options struct {
 	ProjectID    string
-	Topic        string
 	Subscription string
 }
 
@@ -26,7 +25,6 @@ const maxMessages = 100
 
 func init() {
 	flag.StringVar(&options.ProjectID, "projectId", "", "specify the gcp projectId")
-	flag.StringVar(&options.Topic, "topic", "", "specify the pub/sub topic")
 	flag.StringVar(&options.Subscription, "subscription", "", "specify the pub/sub subscription")
 	flag.Parse()
 }
@@ -46,12 +44,7 @@ func run() error {
 }
 
 var (
-	topic        *pubsub.Topic
 	subscription *pubsub.Subscription
-
-	// Messages received by this instance.
-	messagesMu sync.Mutex
-	messages   []string
 
 	client *pubsub.Client
 )
@@ -61,11 +54,6 @@ func runWithContext(ctx context.Context) error {
 	var err error
 	client, err = pubsub.NewClient(ctx, options.ProjectID)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	topic = client.Topic(options.Topic)
-	if _, err := topic.Exists(ctx); err != nil {
 		log.Fatal(err)
 	}
 

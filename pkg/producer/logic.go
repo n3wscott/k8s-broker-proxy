@@ -15,9 +15,14 @@ import (
 
 	"context"
 
+	"time"
+
 	"github.com/gin-gonic/gin/json"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
+
+const timeoutSeconds = 30
+const workerPollSeconds = 3
 
 // The work flow for this application is as follows:
 // 1. broker is acting as a broker accepting requests locally
@@ -53,12 +58,17 @@ func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
 		glog.Fatal(err)
 	}
 
-	return &BusinessLogic{
+	b := &BusinessLogic{
 		async:     o.Async,
 		instances: make(map[string]*Instance, 10),
+		pending:   make(map[string]*PendingRequest, 10),
 		client:    client,
 		topic:     topic,
-	}, nil
+	}
+
+	go b.worker()
+
+	return b, nil
 }
 
 // BusinessLogic provides an implementation of the broker.BusinessLogic
@@ -76,6 +86,8 @@ type BusinessLogic struct {
 	// Pubsub
 	client *pubsub.Client
 	topic  *pubsub.Topic
+
+	pending map[string]*PendingRequest
 }
 
 func (b *BusinessLogic) AdditionalRouting(router *mux.Router) {
@@ -89,6 +101,72 @@ type PubSubData struct {
 	ID      string      `json:"id"`
 	Method  string      `json:"method"`
 	Request interface{} `json:"request"`
+}
+
+type PendingRequest struct {
+	ID       string
+	Done     chan<- bool
+	Response chan PendingResponse
+}
+
+type PendingResponse struct {
+	ID       string      `json:"id"`
+	Method   string      `json:"method"`
+	Response interface{} `json:"response"`
+}
+
+// for now we will just hang for 5 seconds.
+func (b *BusinessLogic) worker() {
+	ctx := context.Background()
+	glog.Info("starting worker")
+	for {
+		select {
+		case <-ctx.Done():
+			glog.Info("worker quit")
+			return
+		case <-time.After(workerPollSeconds * time.Second):
+			// do work.
+			for _, r := range b.pending {
+				glog.Info("working on - ", r)
+				sample := fmt.Sprintf("{\"id\":\"%s\"}", r.ID)
+				r.Response <- PendingResponse{
+					ID:       r.ID,
+					Method:   "Demo",
+					Response: []byte(sample),
+				}
+			}
+		}
+	}
+}
+
+func (b *BusinessLogic) waitFor(id string) (resp PendingResponse, err error) {
+	// Start a worker goroutine, giving it the channel to
+	// notify on.
+	done := make(chan bool)
+	response := make(chan PendingResponse)
+
+	b.pending[id] = &PendingRequest{
+		ID:       id,
+		Response: response,
+		Done:     done,
+	}
+
+	select {
+	case resp = <-response:
+		glog.Info(id, " response received ", resp)
+	case <-done:
+		glog.Info(id, " - is done")
+		err = fmt.Errorf("done")
+	case <-time.After(timeoutSeconds * time.Second):
+		glog.Info(id, " - timeout")
+		err = fmt.Errorf("timeout")
+	}
+
+	glog.Info(id, " - clearing")
+	// Remember to clear out the pending request.
+	delete(b.pending, id)
+
+	return
 }
 
 // TODO: might want to return a context object rather than string for id.
@@ -125,7 +203,11 @@ func (b *BusinessLogic) publish(method string, request interface{}) (string, err
 }
 
 func (b *BusinessLogic) GetCatalog(c *broker.RequestContext) (*broker.CatalogResponse, error) {
-	b.publish("GetCatalog", nil)
+	id, err := b.publish("GetCatalog", nil)
+	if err != nil {
+		// todo
+	}
+	b.waitFor(id)
 
 	if b.catalog != nil {
 		return b.catalog, nil
@@ -140,7 +222,8 @@ func (b *BusinessLogic) GetCatalog(c *broker.RequestContext) (*broker.CatalogRes
 }
 
 func (b *BusinessLogic) Provision(request *osb.ProvisionRequest, c *broker.RequestContext) (*broker.ProvisionResponse, error) {
-	b.publish("Provision", request)
+	id, _ := b.publish("Provision", request)
+	b.waitFor(id)
 
 	// Your provision business logic goes here
 
