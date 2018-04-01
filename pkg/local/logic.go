@@ -23,6 +23,8 @@ func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
 		reg:   reg,
 	}
 
+	b.RegisterSinks()
+
 	return b, nil
 }
 

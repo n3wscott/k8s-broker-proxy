@@ -56,7 +56,7 @@ func (b *BusinessLogic) ventAndWait(method string, request interface{}) (*Respon
 
 	body, err := b.reg.WaitFor(*id)
 	if err != nil {
-		//  pubsub issue or timeout?
+		return nil, err
 	}
 	// body is a message response, with an error and a response.
 

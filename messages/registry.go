@@ -118,6 +118,9 @@ func (r *Registry) SinkWorker() {
 				err := json.Unmarshal(msg.Data, message)
 				if err != nil {
 					glog.Error(err)
+					// ack because you can never deal with this message
+					msg.Ack()
+					return
 				}
 
 				if s := r.sinks[message.ID]; s != nil {
@@ -127,7 +130,8 @@ func (r *Registry) SinkWorker() {
 					msg.Ack()
 					go s.Callback(message.ID, message.Body)
 				} else {
-					msg.Nack()
+					//msg.Nack()
+					msg.Ack() // for now, if the message was random garbage then we get here and retry...
 				}
 			})
 			if err != nil {
