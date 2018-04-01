@@ -18,21 +18,10 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 
 	"github.com/n3wscott/k8s-broker-proxy/pkg/cli"
-	"github.com/n3wscott/k8s-broker-proxy/pkg/producer"
+	"github.com/n3wscott/k8s-broker-proxy/pkg/local"
 )
 
-var addr = flag.String("addr", ":8080", "http service address")
-
-//
-//func main() {
-//	flag.Parse()
-//
-//	s := server.CreateServer()
-//
-//	glog.Infof("Starting Broker, %s", "http://localhost:12345")
-//	glog.Fatal(http.ListenAndServe(":12345", s.Router))
-//
-//}
+var addr = flag.String("addr", ":8181", "http service address")
 
 var options struct {
 	cli.Options
@@ -43,7 +32,7 @@ var options struct {
 }
 
 func init() {
-	flag.IntVar(&options.Port, "port", 3000, "use '--port' option to specify the port for broker to listen on")
+	flag.IntVar(&options.Port, "port", 8181, "use '--port' option to specify the port for broker to listen on")
 	flag.StringVar(&options.TLSCert, "tlsCert", "", "base-64 encoded PEM block to use as the certificate for TLS. If '--tlsCert' is used, then '--tlsKey' must also be used. If '--tlsCert' is not used, then TLS will not be used.")
 	flag.StringVar(&options.TLSKey, "tlsKey", "", "base-64 encoded PEM block to use as the private key matching the TLS certificate. If '--tlsKey' is used, then '--tlsCert' must also be used")
 	cli.AddFlags(&options.Options)
@@ -77,7 +66,7 @@ func runWithContext(ctx context.Context) error {
 
 	addr := ":" + strconv.Itoa(options.Port)
 
-	businessLogic, err := producer.NewBusinessLogic(options.Options)
+	businessLogic, err := local.NewBusinessLogic(options.Options)
 	if err != nil {
 		return err
 	}

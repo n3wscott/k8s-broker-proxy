@@ -1,49 +1,27 @@
-package consumer
+package local
 
 import (
 	"reflect"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/n3wscott/k8s-broker-proxy/messages"
 	"github.com/n3wscott/k8s-broker-proxy/pkg/cli"
 	"github.com/pmorie/osb-broker-lib/pkg/broker"
-
-	"context"
-
-	"time"
-
-	"encoding/json"
 
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
 
 func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
-	ctx := context.Background()
-
-	client, err := pubsub.NewClient(ctx, o.ProjectID)
+	reg, err := messages.NewRegistry(o.ProjectID, o.Topic, o.Subscription)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	topic := client.Topic(o.Topic)
-	if _, err := topic.Exists(ctx); err != nil {
-		glog.Fatal(err)
-	}
-
-	subscription := client.Subscription(o.Subscription)
-	if ok, err := subscription.Exists(ctx); err != nil || !ok {
-		glog.Fatal("Subscription Exists: ", ok, " Error: ", err)
-	}
-
 	b := &BusinessLogic{
-		async:        o.Async,
-		client:       client,
-		topic:        topic,
-		subscription: subscription,
+		async: o.Async,
+		reg:   reg,
 	}
-
-	go b.worker()
 
 	return b, nil
 }
@@ -54,10 +32,84 @@ type BusinessLogic struct {
 	// Indicates if the broker should handle the requests asynchronously.
 	async bool
 
-	// Pubsub
-	client       *pubsub.Client
-	topic        *pubsub.Topic
-	subscription *pubsub.Subscription
+	reg *messages.Registry
+}
+
+type ResponseBody struct {
+	Response interface{} `json:"response"`
+	Error    interface{} `json:"error"`
+}
+
+func (b *BusinessLogic) RegisterSinks() {
+	b.reg.Sink("GetCatalog", b.ventGetCatalog)
+	b.reg.Sink("Provision", b.ventProvision)
+	b.reg.Sink("Deprovision", b.ventDeprovision)
+	b.reg.Sink("LastOperation", b.ventLastOperation)
+	b.reg.Sink("Bind", b.ventBind)
+	b.reg.Sink("Unbind", b.ventUnbind)
+	b.reg.Sink("Update", b.ventUpdate)
+}
+
+func (b *BusinessLogic) ventGetCatalog(id string, body interface{}) {
+	resp, err := b.GetCatalog(nil)
+	b.reg.VentWith(id, "GetCatalog", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
+}
+
+func (b *BusinessLogic) ventProvision(id string, body interface{}) {
+	request := body.(*osb.ProvisionRequest)
+	resp, err := b.Provision(request, nil)
+	b.reg.VentWith(id, "Provision", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
+}
+
+func (b *BusinessLogic) ventDeprovision(id string, body interface{}) {
+	request := body.(*osb.DeprovisionRequest)
+	resp, err := b.Deprovision(request, nil)
+	b.reg.VentWith(id, "Deprovision", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
+}
+
+func (b *BusinessLogic) ventLastOperation(id string, body interface{}) {
+	request := body.(*osb.LastOperationRequest)
+	resp, err := b.LastOperation(request, nil)
+	b.reg.VentWith(id, "LastOperation", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
+}
+
+func (b *BusinessLogic) ventBind(id string, body interface{}) {
+	request := body.(*osb.BindRequest)
+	resp, err := b.Bind(request, nil)
+	b.reg.VentWith(id, "Bind", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
+}
+
+func (b *BusinessLogic) ventUnbind(id string, body interface{}) {
+	request := body.(*osb.UnbindRequest)
+	resp, err := b.Unbind(request, nil)
+	b.reg.VentWith(id, "Unbind", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
+}
+
+func (b *BusinessLogic) ventUpdate(id string, body interface{}) {
+	request := body.(*osb.UpdateInstanceRequest)
+	resp, err := b.Update(request, nil)
+	b.reg.VentWith(id, "Update", ResponseBody{
+		Response: resp,
+		Error:    err,
+	})
 }
 
 func (b *BusinessLogic) AdditionalRouting(router *mux.Router) {
@@ -65,107 +117,6 @@ func (b *BusinessLogic) AdditionalRouting(router *mux.Router) {
 }
 
 var _ broker.Interface = &BusinessLogic{}
-
-// todo: might want to break this apart out of the logic area
-type PubSubData struct {
-	ID      string      `json:"id"`
-	Method  string      `json:"method"`
-	Request interface{} `json:"request"`
-}
-
-type PendingResponse struct {
-	ID       string      `json:"id"`
-	Method   string      `json:"method"`
-	Response interface{} `json:"response"`
-}
-
-// for now we will just hang for 5 seconds.
-func (b *BusinessLogic) worker() {
-	ctx := context.Background()
-	glog.Info("starting worker")
-	cctx, cancel := context.WithCancel(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			glog.Info("worker quit")
-			return
-		case <-time.After(time.Second):
-			// do work.
-			err := b.subscription.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
-				//mu.Lock()
-				//defer mu.Unlock()
-				glog.Info("Got message: ", string(msg.Data))
-
-				if msg.ID == "abort" {
-					cancel()
-				}
-				request := &PubSubData{}
-				err := json.Unmarshal(msg.Data, request)
-				if err != nil {
-					glog.Error(err)
-				}
-				msg.Ack()
-
-				go b.process(request)
-			})
-			if err != nil {
-				glog.Error(err)
-				return
-			}
-		}
-	}
-}
-
-func (b *BusinessLogic) process(req *PubSubData) {
-
-	switch req.Method {
-	case "GetCatalog":
-		resp, err := b.GetCatalog(nil)
-		if err != nil {
-			glog.Error(err)
-		}
-		b.publish(req.ID, req.Method, resp)
-	case "Provision":
-		provisionRequest := req.Request.(*osb.ProvisionRequest)
-		resp, err := b.Provision(provisionRequest, nil)
-		if err != nil {
-			glog.Error(err)
-		}
-		b.publish(req.ID, req.Method, resp)
-	case "Deprovision":
-	case "LastOperation":
-	case "Bind":
-	case "Unbind":
-	case "Update":
-	}
-}
-
-// TODO: might want to return a context object rather than string for id.
-func (b *BusinessLogic) publish(id, method string, response interface{}) (string, error) {
-	ctx := context.Background()
-
-	json, err := json.Marshal(PendingResponse{
-		ID:       id,
-		Method:   method,
-		Response: response,
-	})
-	if err != nil {
-		glog.Error(err)
-	}
-
-	msg := &pubsub.Message{
-		Data: json,
-	}
-
-	if _, err := b.topic.Publish(ctx, msg).Get(ctx); err != nil {
-		glog.Errorf("Could not publish message: %v", err)
-		return "", err
-	}
-
-	glog.Info("Message published.")
-
-	return id, nil
-}
 
 func truePtr() *bool {
 	b := true
