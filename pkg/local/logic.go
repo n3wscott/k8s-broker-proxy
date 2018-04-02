@@ -43,6 +43,7 @@ type ResponseBody struct {
 }
 
 func (b *BusinessLogic) RegisterSinks() {
+	glog.Info("RegisterSinks")
 	b.reg.Sink("GetCatalog", b.ventGetCatalog)
 	b.reg.Sink("Provision", b.ventProvision)
 	b.reg.Sink("Deprovision", b.ventDeprovision)
@@ -53,6 +54,7 @@ func (b *BusinessLogic) RegisterSinks() {
 }
 
 func (b *BusinessLogic) ventGetCatalog(id string, body interface{}) {
+	glog.Info("ventGetCatalog ", id)
 	resp, err := b.GetCatalog(nil)
 	b.reg.VentWith(id, "GetCatalog", ResponseBody{
 		Response: resp,

@@ -55,10 +55,13 @@ func NewRegistry(projectID, topic, subscription string) (*Registry, error) {
 func (r *Registry) Vent(event string, body interface{}) (*string, error) {
 	id := uuid.NewUUID().String()
 
+	glog.Info("Vent ", id)
+
 	return r.vent(id, event, body)
 }
 
 func (r *Registry) VentWith(id, event string, body interface{}) (*string, error) {
+	glog.Info("VentWith ", id)
 	return r.vent(id, event, body)
 }
 
@@ -82,16 +85,24 @@ func (r *Registry) vent(id, event string, body interface{}) (*string, error) {
 		return nil, err
 	}
 
-	glog.V(9).Info("message published")
+	glog.Info("message published to ", r.topic.String())
 
 	return &id, nil
 }
 
 func (r *Registry) SinkWorker() {
 	ctx := context.Background()
+
+	r.sinkMutex.Lock()
+	if !r.sinking {
+		r.sinking = true
+	} else {
+		return
+	}
+	r.sinkMutex.Unlock()
+
 	glog.Info("starting sink worker")
 
-	r.sinking = true
 	cctx, cancel := context.WithCancel(ctx)
 	for {
 		select {
@@ -100,12 +111,13 @@ func (r *Registry) SinkWorker() {
 			return
 		case <-time.After(r.SinkPollTime):
 			if len(r.sinks) == 0 {
+				glog.Info("no sinks, cancel")
 				cancel()
 				continue
 			}
 			err := r.subscription.Receive(cctx, func(ctx context.Context, msg *pubsub.Message) {
-				r.sinkMutex.Lock()
-				defer r.sinkMutex.Unlock()
+				//r.sinkMutex.Lock()
+				//defer r.sinkMutex.Unlock()
 
 				glog.Info("Got message: ", string(msg.Data))
 
@@ -123,6 +135,7 @@ func (r *Registry) SinkWorker() {
 					return
 				}
 
+				glog.Info("Processing  ", message.ID)
 				if s := r.sinks[message.ID]; s != nil {
 					msg.Ack()
 					go s.Callback(message.ID, message.Body)
@@ -141,7 +154,11 @@ func (r *Registry) SinkWorker() {
 			}
 		}
 	}
+	r.sinkMutex.Lock()
 	r.sinking = false
+	r.sinkMutex.Unlock()
+
+	glog.Info("sink worker done")
 }
 
 // Skin will watch the subscription for messages with a matching event and call the callback with the body of the message.
@@ -158,12 +175,14 @@ func (r *Registry) Sink(key string, callback Callback) error {
 	if !r.sinking {
 		go r.SinkWorker()
 	}
+	glog.Info("sink added for ", key)
 	return nil
 }
 
-func (r *Registry) RemoveSink(event string) {
-	if r.sinks[event] != nil {
-		delete(r.sinks, event)
+func (r *Registry) RemoveSink(key string) {
+	if r.sinks[key] != nil {
+		glog.Info("sink removed for ", key)
+		delete(r.sinks, key)
 	}
 }
 
@@ -172,6 +191,7 @@ func (r *Registry) WaitFor(id string) (interface{}, error) {
 	response := make(chan interface{})
 
 	r.Sink(id, func(event string, body interface{}) {
+		glog.Info("WaitFor ", id, " got ", body)
 		response <- body
 	})
 
