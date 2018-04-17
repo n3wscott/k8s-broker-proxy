@@ -1,8 +1,6 @@
 package local
 
 import (
-	"reflect"
-
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/n3wscott/k8s-broker-proxy/messages"
@@ -20,9 +18,19 @@ func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
 		glog.Fatal(err)
 	}
 
+	config := osb.DefaultClientConfiguration()
+	config.URL = o.BrokerUrl
+
+	client, err := osb.NewClient(config)
+	if err != nil {
+		glog.Fatal(err)
+		return nil, err
+	}
+
 	b := &BusinessLogic{
-		async: o.Async,
-		reg:   reg,
+		async:  o.Async,
+		reg:    reg,
+		client: client,
 	}
 
 	b.RegisterSinks()
@@ -37,6 +45,8 @@ type BusinessLogic struct {
 	async bool
 
 	reg *messages.Registry
+
+	client osb.Client
 }
 
 type ResponseBody struct {
@@ -152,119 +162,97 @@ func truePtr() *bool {
 }
 
 func (b *BusinessLogic) GetCatalog(c *broker.RequestContext) (*broker.CatalogResponse, error) {
-	response := &broker.CatalogResponse{}
-	osbResponse := &osb.CatalogResponse{
-		Services: []osb.Service{
-			{
-				Name:          "example-starter-pack-service",
-				ID:            "4f6e6cf6-ffdd-425f-a2c7-3c9258ad246a",
-				Description:   "The example service from the osb starter pack!",
-				Bindable:      true,
-				PlanUpdatable: truePtr(),
-				Metadata: map[string]interface{}{
-					"displayName": "Example starter pack service",
-					"imageUrl":    "https://avatars2.githubusercontent.com/u/19862012?s=200&v=4",
-				},
-				Plans: []osb.Plan{
-					{
-						Name:        "default",
-						ID:          "86064792-7ea2-467b-af93-ac9694d96d5b",
-						Description: "The default plan for the starter pack example service",
-						Free:        truePtr(),
-						Schemas: &osb.Schemas{
-							ServiceInstance: &osb.ServiceInstanceSchema{
-								Create: &osb.InputParametersSchema{
-									Parameters: map[string]interface{}{
-										"type": "object",
-										"properties": map[string]interface{}{
-											"color": map[string]interface{}{
-												"type":    "string",
-												"default": "Clear",
-												"enum": []string{
-													"Clear",
-													"Beige",
-													"Grey",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+	resp, err := b.client.GetCatalog()
+
+	if err != nil {
+		glog.Error("GetCatalog failed with ", err)
+		return nil, err
 	}
-	response.CatalogResponse = *osbResponse
-	return response, nil
+
+	return &broker.CatalogResponse{
+		CatalogResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) Provision(request *osb.ProvisionRequest, c *broker.RequestContext) (*broker.ProvisionResponse, error) {
-	response := broker.ProvisionResponse{}
-	return &response, nil
+	resp, err := b.client.ProvisionInstance(request)
+
+	if err != nil {
+		glog.Error("ProvisionInstance failed with ", err)
+		return nil, err
+	}
+
+	return &broker.ProvisionResponse{
+		ProvisionResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) Deprovision(request *osb.DeprovisionRequest, c *broker.RequestContext) (*broker.DeprovisionResponse, error) {
-	response := broker.DeprovisionResponse{}
+	resp, err := b.client.DeprovisionInstance(request)
 
-	//if request.AcceptsIncomplete {
-	//	response.Async = b.async
-	//}
+	if err != nil {
+		glog.Error("DeprovisionInstance failed with ", err)
+		return nil, err
+	}
 
-	return &response, nil
+	return &broker.DeprovisionResponse{
+		DeprovisionResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) LastOperation(request *osb.LastOperationRequest, c *broker.RequestContext) (*broker.LastOperationResponse, error) {
+	resp, err := b.client.PollLastOperation(request)
 
-	response := broker.LastOperationResponse{}
+	if err != nil {
+		glog.Error("PollLastOperation failed with ", err)
+		return nil, err
+	}
 
-	// Your last-operation business logic goes here
-
-	return &response, nil
+	return &broker.LastOperationResponse{
+		LastOperationResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) Bind(request *osb.BindRequest, c *broker.RequestContext) (*broker.BindResponse, error) {
-	//if request.AcceptsIncomplete {
-	//	response.Async = b.async
-	//}
+	resp, err := b.client.Bind(request)
 
-	response := broker.BindResponse{
-		BindResponse: osb.BindResponse{
-			Credentials: map[string]interface{}{"todo": "todo"},
-		},
+	if err != nil {
+		glog.Error("Bind failed with ", err)
+		return nil, err
 	}
 
-	return &response, nil
+	return &broker.BindResponse{
+		BindResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) Unbind(request *osb.UnbindRequest, c *broker.RequestContext) (*broker.UnbindResponse, error) {
-	// Your unbind business logic goes here
-	return &broker.UnbindResponse{}, nil
+	resp, err := b.client.Unbind(request)
+
+	if err != nil {
+		glog.Error("Unbind failed with ", err)
+		return nil, err
+	}
+
+	return &broker.UnbindResponse{
+		UnbindResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) Update(request *osb.UpdateInstanceRequest, c *broker.RequestContext) (*broker.UpdateInstanceResponse, error) {
-	// Your logic for updating a service goes here.
-	response := broker.UpdateInstanceResponse{}
-	if request.AcceptsIncomplete {
-		response.Async = b.async
+	resp, err := b.client.UpdateInstance(request)
+
+	if err != nil {
+		glog.Error("UpdateInstance failed with ", err)
+		return nil, err
 	}
 
-	return &response, nil
+	return &broker.UpdateInstanceResponse{
+		UpdateInstanceResponse: *resp,
+	}, err
 }
 
 func (b *BusinessLogic) ValidateBrokerAPIVersion(version string) error {
 	glog.Info("ValidateBrokerAPIVersion")
 	return nil
-}
-
-type Instance struct {
-	ID        string
-	ServiceID string
-	PlanID    string
-	Params    map[string]interface{}
-}
-
-func (i *Instance) Match(other *Instance) bool {
-	return reflect.DeepEqual(i, other)
 }

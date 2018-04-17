@@ -15,6 +15,8 @@ type Options struct {
 	ProjectID    string
 	Topic        string
 	Subscription string
+
+	BrokerUrl string
 }
 
 // AddFlags is a hook called to initialize the CLI flags for broker options.
@@ -27,4 +29,6 @@ func AddFlags(o *Options) {
 	flag.StringVar(&o.ProjectID, "projectId", "", "specify the gcp projectId")
 	flag.StringVar(&o.Topic, "topic", "", "specify the pub/sub topic")
 	flag.StringVar(&o.Subscription, "subscription", "", "specify the pub/sub subscription")
+
+	flag.StringVar(&o.BrokerUrl, "broker", "", "URL of the local broker")
 }
