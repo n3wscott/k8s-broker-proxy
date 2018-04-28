@@ -3,6 +3,7 @@ package proxy
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/n3wscott/k8s-broker-proxy/pkg/binding"
 	"github.com/n3wscott/k8s-broker-proxy/pkg/cli"
 	"github.com/pmorie/osb-broker-lib/pkg/broker"
 
@@ -13,6 +14,16 @@ import (
 )
 
 func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
+
+	if o.Binding != "" {
+		projectId, topicId, subscriptionId, err := binding.PubSubBinding(o.Binding)
+		if err != nil {
+			return nil, err
+		}
+		o.ProjectID = projectId
+		o.Topic = topicId
+		o.Subscription = subscriptionId
+	}
 
 	reg, err := messages.NewRegistry(o.ProjectID, o.Topic, o.Subscription)
 	if err != nil {

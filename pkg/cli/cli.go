@@ -16,6 +16,9 @@ type Options struct {
 	Topic        string
 	Subscription string
 
+	// Alt Pub/Sub config from a binding file.
+	Binding string
+
 	BrokerUrl string
 }
 
@@ -30,5 +33,8 @@ func AddFlags(o *Options) {
 	flag.StringVar(&o.Topic, "topic", "", "specify the pub/sub topic")
 	flag.StringVar(&o.Subscription, "subscription", "", "specify the pub/sub subscription")
 
+	flag.StringVar(&o.Binding, "binding", "", "Pub/Sub binding to use from Service Catalog")
+
 	flag.StringVar(&o.BrokerUrl, "broker", "", "URL of the local broker")
+
 }
