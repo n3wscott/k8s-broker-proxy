@@ -6,7 +6,7 @@ SOURCE_DIRS    = pkg
 
 export TAG
 export PORT=3000
-export GCP_PROJECT=plori-nicholss
+export GCP_PROJECT=n3wscott-ledhouse-demo
 export GCP_PATH=us.gcr.io/${GCP_PROJECT}
 
 install: ## Go get deps
@@ -16,27 +16,23 @@ test: ## Run unit tests
 	@go test -cover ./pkg/...
 
 build: ## Build the proxy output
-	@go build -ldflags "-X main.version=$(TAG)" -o out/proxy ./cmd/main.go
+	@go build -ldflags "-X main.version=$(TAG)" -o out/proxy ./cmd/proxy/main.go
 
 fmtcheck: ## Check go formatting
 	@gofmt -l $(SOURCES) | grep ".*\.go"; if [ "$$?" = "0" ]; then exit 1; fi
 
-serve: build cfg ## Run the proxy locally
+serve: build ## Run the proxy locally
 	./out/proxy --v 1 -logtostderr
 
 clean: ## Clean
 	rm ./out/proxy
-	rm ./out/config.yml
-
-cfg: ## Write the config into envsubst
-	envsubst < ./config.yml.dist > ./out/config.yml
 
 check: fmtcheck vet lint test ## Pre-flight checks before creating PR
 
 lint: ## Run golint
 	@golint -set_exit_status $(addsuffix /... , $(SOURCE_DIRS))
 
-pack: build cfg ## Make a docker pack
+pack: build ## Make a docker pack
 	GOOS=linux make build
 	docker build -t ${GCP_PATH}/k8s-broker-proxy:$(TAG) .
 
@@ -67,4 +63,4 @@ help: ## Show this help screen
 	@grep -E '^[ a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
         awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: install test build serve clean pack deploy ship vet cfg check fmtcheck
+.PHONY: install test build serve clean pack deploy ship vet check fmtcheck

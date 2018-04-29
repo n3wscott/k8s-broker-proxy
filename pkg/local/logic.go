@@ -80,7 +80,7 @@ func convertBodyTo(body interface{}, req interface{}) {
 	if body != nil {
 		if data, err := json.Marshal(body); err != nil {
 			glog.Error(err)
-		} else if err := json.Unmarshal(data, &req); err != nil {
+		} else if err := json.Unmarshal(data, req); err != nil {
 			glog.Error(err)
 		}
 	}
@@ -97,7 +97,7 @@ func (b *BusinessLogic) sinkGetCatalog(id string, body interface{}) {
 
 func (b *BusinessLogic) sinkProvision(id string, body interface{}) {
 	var request osb.ProvisionRequest
-	convertBodyTo(body, request)
+	convertBodyTo(body, &request)
 
 	resp, err := b.Provision(&request, nil)
 	b.reg.VentWith(id, "Provision", ResponseBody{
@@ -108,7 +108,7 @@ func (b *BusinessLogic) sinkProvision(id string, body interface{}) {
 
 func (b *BusinessLogic) sinkDeprovision(id string, body interface{}) {
 	var request osb.DeprovisionRequest
-	convertBodyTo(body, request)
+	convertBodyTo(body, &request)
 
 	resp, err := b.Deprovision(&request, nil)
 	b.reg.VentWith(id, "Deprovision", ResponseBody{
@@ -119,7 +119,7 @@ func (b *BusinessLogic) sinkDeprovision(id string, body interface{}) {
 
 func (b *BusinessLogic) sinkLastOperation(id string, body interface{}) {
 	var request osb.LastOperationRequest
-	convertBodyTo(body, request)
+	convertBodyTo(body, &request)
 
 	resp, err := b.LastOperation(&request, nil)
 	b.reg.VentWith(id, "LastOperation", ResponseBody{
@@ -130,7 +130,7 @@ func (b *BusinessLogic) sinkLastOperation(id string, body interface{}) {
 
 func (b *BusinessLogic) sinkBind(id string, body interface{}) {
 	var request osb.BindRequest
-	convertBodyTo(body, request)
+	convertBodyTo(body, &request)
 
 	resp, err := b.Bind(&request, nil)
 	b.reg.VentWith(id, "Bind", ResponseBody{
@@ -141,7 +141,7 @@ func (b *BusinessLogic) sinkBind(id string, body interface{}) {
 
 func (b *BusinessLogic) sinkUnbind(id string, body interface{}) {
 	var request osb.UnbindRequest
-	convertBodyTo(body, request)
+	convertBodyTo(body, &request)
 
 	resp, err := b.Unbind(&request, nil)
 	b.reg.VentWith(id, "Unbind", ResponseBody{
@@ -152,7 +152,7 @@ func (b *BusinessLogic) sinkUnbind(id string, body interface{}) {
 
 func (b *BusinessLogic) sinkUpdate(id string, body interface{}) {
 	var request osb.UpdateInstanceRequest
-	convertBodyTo(body, request)
+	convertBodyTo(body, &request)
 
 	resp, err := b.Update(&request, nil)
 	b.reg.VentWith(id, "Update", ResponseBody{

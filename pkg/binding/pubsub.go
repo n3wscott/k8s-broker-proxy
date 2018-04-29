@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	gcpProjectEnvName   = "GOOGLE_CLOUD_PROJECT"
-	pubsubTopicEnvName  = "PUBSUB_TOPIC"
-	pubsubSubEnvName    = "PUBSUB_SUBSCRIPTION"
-	gcpApplicationCreds = "GOOGLE_APPLICATION_CREDENTIALS"
+	GCPProjectEnvName         = "GOOGLE_CLOUD_PROJECT"
+	PubSubTopicEnvName        = "PUBSUB_TOPIC"
+	PubSubSubscriptionEnvName = "PUBSUB_SUBSCRIPTION"
+	GCPApplicationCreds       = "GOOGLE_APPLICATION_CREDENTIALS"
 )
 
 type PubSubBindingObject struct {
@@ -72,9 +72,9 @@ func PubSubBinding(file string) (projectId, topicId, subscriptionId string, err 
 	}
 	credsFile.Write(creds)
 
-	os.Setenv(gcpProjectEnvName, projectId)
-	os.Setenv(pubsubTopicEnvName, topicId)
-	os.Setenv(pubsubSubEnvName, subscriptionId)
-	os.Setenv(gcpApplicationCreds, credsFile.Name())
+	os.Setenv(GCPProjectEnvName, projectId)
+	os.Setenv(PubSubTopicEnvName, topicId)
+	os.Setenv(PubSubSubscriptionEnvName, subscriptionId)
+	os.Setenv(GCPApplicationCreds, credsFile.Name())
 	return
 }

@@ -9,12 +9,15 @@ import (
 
 	"encoding/json"
 
+	"os"
+
 	"github.com/n3wscott/k8s-broker-proxy/messages"
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
 
 func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
 
+	// load a binding file
 	if o.Binding != "" {
 		projectId, topicId, subscriptionId, err := binding.PubSubBinding(o.Binding)
 		if err != nil {
@@ -23,6 +26,19 @@ func NewBusinessLogic(o cli.Options) (*BusinessLogic, error) {
 		o.ProjectID = projectId
 		o.Topic = topicId
 		o.Subscription = subscriptionId
+	}
+
+	// if stuff is still blank, look in the env
+	if o.ProjectID == "" {
+		o.ProjectID = os.Getenv(binding.GCPProjectEnvName)
+	}
+
+	if o.Topic == "" {
+		o.Topic = os.Getenv(binding.PubSubTopicEnvName)
+	}
+
+	if o.Subscription == "" {
+		o.Subscription = os.Getenv(binding.PubSubSubscriptionEnvName)
 	}
 
 	reg, err := messages.NewRegistry(o.ProjectID, o.Topic, o.Subscription)

@@ -1,10 +1,9 @@
 FROM alpine:3.4
 
-RUN apk -U add ca-certificates
+RUN apk add --no-cache ca-certificates
 
 EXPOSE 8080
 
-ADD proxy /bin/proxy
-ADD config.yml /etc/proxy/config.yml
+ADD ./out/proxy /bin/proxy
 
-CMD ["proxy", "-config", "/etc/proxy/config.yml"]
+CMD ["proxy", "--port=8080"]
